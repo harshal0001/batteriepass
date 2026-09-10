@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# A second push to a pull request makes the first run irrelevant. Cancel it rather
+# than let it queue ahead of the one that matters.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: lint, types, tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.11.8"
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --locked --all-extras
+
+      # First, because it is the cheapest check and the most expensive mistake.
+      # Everything below is meaningless if the serving image is about to gain 700 MB.
+      - name: Serving boundary
+        run: uv run python scripts/no_torch_in_src.py
+
+      - name: Lint
+        run: uv run ruff check src tests scripts
+
+      - name: Format
+        run: uv run ruff format --check src tests scripts
+
+      - name: Type check
+        run: uv run mypy src/bpass
+
+      - name: Tests
+        run: uv run pytest

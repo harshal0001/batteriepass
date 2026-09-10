@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+*.egg-info/
+
+# Raw battery data never enters the repo. Only derived Parquet features ship,
+# and those live under data-cache/ which is also ignored — the Kaggle dataset
+# is the distribution channel for them, not git.
+data-raw/
+data-cache/
+*.mat
+
+# Experiment tracking output. Zipped and attached to a release, not committed.
+mlruns/
+training/checkpoints/
+
+# Node
+node_modules/
+frontend/dist/
+.vercel/
+
+# Local environment
+.env
+.env.local
+
+# The planning brief. Kept local: it is written in portfolio-and-hiring terms that
+# read oddly in a public repository. The decisions it drove live in docs/adr/.
+project-2-batteriepass.md

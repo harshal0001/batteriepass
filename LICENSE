@@ -1,0 +1,27 @@
+Copyright (c) 2026 Harshal Kothari. All rights reserved.
+
+This source code is published so that it can be read and evaluated — as a portfolio
+project and as a reference for how the problem was approached.
+
+No permission is granted to copy, modify, distribute, sublicense, or use this code or
+any substantial part of it, in source or compiled form, for any purpose. Reading it,
+running it locally to see what it does, and quoting short excerpts with attribution
+are fine.
+
+Third-party material carries its own licence and is not covered by this notice:
+
+  - Catena-X SAMM aspect models fetched from eclipse-tractusx/sldt-semantic-models
+    are Apache License 2.0. Generated bindings under src/bpass/bindings/ derive from
+    them; see the manifest beside each pinned model version.
+  - The Severson / MIT–Stanford battery dataset is CC BY 4.0.
+  - The Oxford Battery Degradation Dataset is CC BY 4.0.
+  - NASA PCoE battery datasets are US Government public domain.
+  - Regulation (EU) 2023/1542 text is reproduced only as short quotations.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.
+
+The state-of-health estimate this project produces is NOT a safety-certified or
+type-approved measurement. It is a statistical estimate from a research model trained
+on laboratory cycling data. Do not use it for any safety, warranty, resale-valuation
+or regulatory-filing decision. The conformance check reports coverage against a
+published reading of Annex XIII; it is not a legal compliance certification.

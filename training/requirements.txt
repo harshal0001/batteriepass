@@ -1,0 +1,20 @@
+# Training only. This file is never installed into the serving image, and torch never
+# appears in the project's runtime dependencies — see docs/adr/0003 and
+# scripts/no_torch_in_src.py, which fails CI if that ever changes.
+#
+# Kept as a plain requirements file rather than a dependency group so that torch can
+# never enter uv.lock, and so a Kaggle notebook can install it in one line.
+
+torch>=2.5,<3
+onnx>=1.17,<2            # export target
+onnxruntime>=1.20,<2     # the parity check needs both runtimes side by side
+mlflow>=2.18,<4          # local tracking directory, no account, no server
+
+# Feature extraction and the baseline, mirrored from the project's `data` extra so a
+# notebook needs exactly one install.
+pandas>=2.2,<3
+pyarrow>=18,<21
+scikit-learn>=1.5,<2
+scipy>=1.14,<2
+h5py>=3.12,<4
+numpy>=2.0,<3

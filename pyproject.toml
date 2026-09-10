@@ -1,0 +1,96 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "batteriepass"
+version = "0.1.0"
+description = "Catena-X battery passport assembly, Annex XIII conformance and state-of-health estimation"
+requires-python = ">=3.12,<3.13"
+
+# Everything here is baked into the serving image, so everything here is weighed
+# against cold start. onnxruntime is ~50 MB; a CPU-only torch is ~700 MB, which
+# is the entire reason for the train/serve split. torch must never appear below.
+dependencies = [
+    "fastapi>=0.115,<1",
+    "uvicorn[standard]>=0.32,<1",
+    "pydantic>=2.9,<3",
+    "pydantic-settings>=2.6,<3",
+    "onnxruntime>=1.20,<2",   # the serving runtime. See docs/adr/0003.
+    "numpy>=2.0,<3",          # preprocessing only; pandas stays out of the image
+    "boto3>=1.35,<2",         # DynamoDB, nothing else
+    "structlog>=24.4,<26",    # structured JSON logs on the request path
+]
+
+[project.optional-dependencies]
+# rdflib is needed to *generate* the bindings, never to serve them. The generated
+# Pydantic models are committed, so the image does not carry an RDF stack.
+codegen = [
+    "rdflib>=7.1,<8",
+]
+
+# Feature extraction and the elastic-net baseline. Runs on a laptop and on Kaggle,
+# never in the Lambda image.
+data = [
+    "pandas>=2.2,<3",
+    "pyarrow>=18,<21",
+    "scikit-learn>=1.5,<2",
+    "scipy>=1.14,<2",
+    "h5py>=3.12,<4",          # Severson .mat files are HDF5 v7.3
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-cov>=6.0",
+    "hypothesis>=6.115",      # property-based round-trip tests on the generator
+    "httpx>=0.28",            # starlette TestClient transport
+    "ruff>=0.8",
+    "mypy>=1.13",
+    "boto3-stubs[dynamodb]>=1.35",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+# Generated code is emitted by our own formatter and checked for byte-stability.
+# Linting it would make the generator's output hostage to a ruff release.
+extend-exclude = ["src/bpass/bindings"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["bpass"]
+
+[tool.mypy]
+python_version = "3.12"
+warn_unused_ignores = true
+warn_redundant_casts = true
+
+# core/ is the contract every other module depends on. It gets strict mode.
+[[tool.mypy.overrides]]
+module = "bpass.core.*"
+strict = true
+
+# Generated, never hand-edited, therefore never type-checked.
+[[tool.mypy.overrides]]
+module = "bpass.bindings.*"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = ["onnxruntime.*", "rdflib.*"]
+ignore_missing_imports = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/bpass"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# src layout, so the suite runs against the tree with no editable install.
+pythonpath = ["src", "scripts"]
+addopts = "-q --strict-markers"
+markers = [
+    "aws: needs DynamoDB Local on BPASS_DYNAMODB_ENDPOINT",
+    "java: needs the official SAMM CLI on PATH for parity checks",
+]
