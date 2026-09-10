@@ -1,0 +1,12 @@
+{
+  "aspect": "SerialPart",
+  "commit": "f2f65e00a7358b1f3eccbe26b16af3eccf25e620",
+  "files": {
+    "SerialPart.ttl": "057d359786aaba32e68a3b71449a3a84163928ee00a3ec790ebafb21039832c2"
+  },
+  "license": "CC-BY-4.0",
+  "namespace": "io.catenax.serial_part",
+  "repository": "eclipse-tractusx/sldt-semantic-models",
+  "urn": "urn:samm:io.catenax.serial_part:3.0.0",
+  "version": "3.0.0"
+}

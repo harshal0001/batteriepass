@@ -1,0 +1,116 @@
+{
+  "$comment": [
+    "Pinned Catena-X aspect models. Data, not constants \u2014 see docs/adr/0005.",
+    "Each model is pinned to an upstream commit, not to a branch. A tag can be moved and",
+    "a branch certainly will be; a commit hash is the only reference that means the same",
+    "thing tomorrow. scripts/fetch_samm.py fetches, hashes and verifies against manifests.",
+    "",
+    "The generated artefacts are fetched alongside the Turtle deliberately. They are the",
+    "output of the official Java SAMM toolchain, which makes them the reference our own",
+    "generator is checked against \u2014 a free, deterministic parity test that needs no JVM.",
+    "",
+    "The nine models below are the closure, not a guess. scripts/fetch_samm.py --closure",
+    "walks every reference reachable from the BatteryPass aspect and reports any model URN",
+    "that is not pinned here. Seven of the nine are reached only through the generic",
+    "passport, by ten terms in total, and none of them would have been obvious by reading",
+    "the BatteryPass Turtle alone."
+  ],
+  "repository": "eclipse-tractusx/sldt-semantic-models",
+  "license": "CC-BY-4.0",
+  "models": [
+    {
+      "namespace": "io.catenax.battery.battery_pass",
+      "version": "6.1.0",
+      "commit": "fd17765fc051905f70dfda971106e9f86eea5352",
+      "role": "schema of record",
+      "aspect": "BatteryPass",
+      "files": [
+        "BatteryPass.ttl",
+        "gen/BatteryPass.json",
+        "gen/BatteryPass-schema.json"
+      ]
+    },
+    {
+      "namespace": "io.catenax.generic.digital_product_passport",
+      "version": "5.0.0",
+      "commit": "f2f65e00a7358b1f3eccbe26b16af3eccf25e620",
+      "role": "imported by battery_pass 6.1.0 as ext-passport:",
+      "aspect": "DigitalProductPassport",
+      "files": [
+        "DigitalProductPassport.ttl",
+        "gen/DigitalProductPassport.json",
+        "gen/DigitalProductPassport-schema.json"
+      ]
+    },
+    {
+      "namespace": "io.catenax.batch",
+      "version": "3.0.0",
+      "commit": "0d8742166bb0d8ed2da1d7d60f375fb3676cca0b",
+      "role": "transitive dependency: LocalIdentifierCharacteristic, via digital_product_passport",
+      "aspect": "Batch",
+      "files": [
+        "Batch.ttl"
+      ]
+    },
+    {
+      "namespace": "io.catenax.part_type_information",
+      "version": "1.0.0",
+      "commit": "23674a9fbef7063c70bc35a1633bcb9e4d8f09ed",
+      "role": "transitive dependency: manufacturerPartId and nameAtManufacturer, via digital_product_passport",
+      "aspect": "PartTypeInformation",
+      "files": [
+        "PartTypeInformation.ttl"
+      ]
+    },
+    {
+      "namespace": "io.catenax.serial_part",
+      "version": "3.0.0",
+      "commit": "f2f65e00a7358b1f3eccbe26b16af3eccf25e620",
+      "role": "transitive dependency: LocalIdentifierCharacteristic, via digital_product_passport",
+      "aspect": "SerialPart",
+      "files": [
+        "SerialPart.ttl"
+      ]
+    },
+    {
+      "namespace": "io.catenax.shared.business_partner_number",
+      "version": "2.0.0",
+      "commit": "9adcc37defb4b113ef841916a832377e9f941aaa",
+      "role": "transitive dependency: BpnaTrait and BpnlTrait, via digital_product_passport",
+      "aspect": "BusinessPartnerNumber",
+      "files": [
+        "BusinessPartnerNumber.ttl"
+      ]
+    },
+    {
+      "namespace": "io.catenax.shared.part_classification",
+      "version": "1.0.0",
+      "commit": "fd17765fc051905f70dfda971106e9f86eea5352",
+      "role": "transitive dependency: partClassification, via digital_product_passport",
+      "aspect": "PartClassification",
+      "files": [
+        "PartClassification.ttl"
+      ]
+    },
+    {
+      "namespace": "io.catenax.shared.quantity",
+      "version": "2.0.0",
+      "commit": "f2f65e00a7358b1f3eccbe26b16af3eccf25e620",
+      "role": "transitive dependency: LinearCharacteristic and MassCharacteristic, via digital_product_passport",
+      "aspect": "Quantity",
+      "files": [
+        "Quantity.ttl"
+      ]
+    },
+    {
+      "namespace": "io.catenax.shared.uuid",
+      "version": "2.0.0",
+      "commit": "6e8bd81f8fcc94f6c609cd2197a356452c01e528",
+      "role": "transitive dependency: UuidV4Trait, via digital_product_passport",
+      "aspect": "Uuid",
+      "files": [
+        "Uuid.ttl"
+      ]
+    }
+  ]
+}

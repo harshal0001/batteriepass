@@ -1,0 +1,12 @@
+{
+  "aspect": "Batch",
+  "commit": "0d8742166bb0d8ed2da1d7d60f375fb3676cca0b",
+  "files": {
+    "Batch.ttl": "e951a124c4f7049fb1d4a8cd321b18247be3305da742a5c94a7cf927a947a503"
+  },
+  "license": "CC-BY-4.0",
+  "namespace": "io.catenax.batch",
+  "repository": "eclipse-tractusx/sldt-semantic-models",
+  "urn": "urn:samm:io.catenax.batch:3.0.0",
+  "version": "3.0.0"
+}

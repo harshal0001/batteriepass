@@ -45,6 +45,7 @@ dev = [
     "pytest-cov>=6.0",
     "hypothesis>=6.115",      # property-based round-trip tests on the generator
     "httpx>=0.28",            # starlette TestClient transport
+    "jsonschema>=4.23",       # cross-checks our bindings against the official SAMM output
     "ruff>=0.8",
     "mypy>=1.13",
     "boto3-stubs[dynamodb]>=1.35",
@@ -92,5 +93,4 @@ pythonpath = ["src", "scripts"]
 addopts = "-q --strict-markers"
 markers = [
     "aws: needs DynamoDB Local on BPASS_DYNAMODB_ENDPOINT",
-    "java: needs the official SAMM CLI on PATH for parity checks",
 ]

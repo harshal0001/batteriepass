@@ -1,0 +1,12 @@
+{
+  "aspect": "Quantity",
+  "commit": "f2f65e00a7358b1f3eccbe26b16af3eccf25e620",
+  "files": {
+    "Quantity.ttl": "29d7b512e785444f2a14489eed690322b0dfa485e1a8a055100d6e551d661a8d"
+  },
+  "license": "CC-BY-4.0",
+  "namespace": "io.catenax.shared.quantity",
+  "repository": "eclipse-tractusx/sldt-semantic-models",
+  "urn": "urn:samm:io.catenax.shared.quantity:2.0.0",
+  "version": "2.0.0"
+}

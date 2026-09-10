@@ -1,0 +1,14 @@
+{
+  "aspect": "BatteryPass",
+  "commit": "fd17765fc051905f70dfda971106e9f86eea5352",
+  "files": {
+    "BatteryPass.ttl": "6a6ee1f4b6b7422304d4f3d5656a63cf2f3bbbc523bad598f43fe22c6e46644b",
+    "gen/BatteryPass-schema.json": "5d5dd3e5fc37d2ad00562e990b0e7778e07e8a711573d2303a6d2b53a76d6900",
+    "gen/BatteryPass.json": "70225faae916be5ed681e109a68ce4eb63bf7a58bc32534d4993629bb6eea5cf"
+  },
+  "license": "CC-BY-4.0",
+  "namespace": "io.catenax.battery.battery_pass",
+  "repository": "eclipse-tractusx/sldt-semantic-models",
+  "urn": "urn:samm:io.catenax.battery.battery_pass:6.1.0",
+  "version": "6.1.0"
+}
