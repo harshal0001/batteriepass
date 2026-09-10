@@ -1,0 +1,14 @@
+{
+  "aspect": "DigitalProductPassport",
+  "commit": "f2f65e00a7358b1f3eccbe26b16af3eccf25e620",
+  "files": {
+    "DigitalProductPassport.ttl": "ce2d3799bb47d7ee069e90f3b0b256d7fb743ee2fdf72fc03aa82a6ecb8ac76e",
+    "gen/DigitalProductPassport-schema.json": "ca61c6112d5f99b16f9287b936efab7475f0f4fcf35b4b2d718e49f8b1a12cca",
+    "gen/DigitalProductPassport.json": "623fed53669793ab98c33f0db4ed6bb9a92b25c126ceb83289edfb85edc44114"
+  },
+  "license": "CC-BY-4.0",
+  "namespace": "io.catenax.generic.digital_product_passport",
+  "repository": "eclipse-tractusx/sldt-semantic-models",
+  "urn": "urn:samm:io.catenax.generic.digital_product_passport:5.0.0",
+  "version": "5.0.0"
+}

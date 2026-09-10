@@ -1,0 +1,12 @@
+{
+  "aspect": "Uuid",
+  "commit": "6e8bd81f8fcc94f6c609cd2197a356452c01e528",
+  "files": {
+    "Uuid.ttl": "b2f8ff3481a2374f05537d5cbc62b4e26dfa671bf4a52f23b9511f7411c3877d"
+  },
+  "license": "CC-BY-4.0",
+  "namespace": "io.catenax.shared.uuid",
+  "repository": "eclipse-tractusx/sldt-semantic-models",
+  "urn": "urn:samm:io.catenax.shared.uuid:2.0.0",
+  "version": "2.0.0"
+}

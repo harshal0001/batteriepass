@@ -56,6 +56,8 @@ difference between this and a notebook.
 
 | Metric | Value |
 |---|---|
+| Aspect-model entities bound | 65 |
+| Properties whose payload name differs from their model name | 105 |
 | Annex XIII attributes checked, all seven clusters | |
 | ONNX vs PyTorch, max abs difference | |
 | Passport assembly incl. inference, p50 / p95 | |
@@ -104,6 +106,7 @@ CPU-only torch install is roughly 700 MB against onnxruntime's 50 MB.
 | `src/bpass/passport/` | Assembly, provenance, the record store |
 | `src/bpass/api/` | FastAPI routes. Transport only |
 | `training/` | The only place `torch` is imported |
+| `samm-models/` | Pinned Catena-X aspect models, hashed. Nine of them |
 | `rulesets/annex-xiii/` | Versioned rule data, hashed |
 | `manifests/` | Committed cell-disjoint split manifests |
 | `docs/adr/` | Why things are the way they are |
@@ -114,6 +117,16 @@ CPU-only torch install is roughly 700 MB against onnxruntime's 50 MB.
 uv sync --all-extras
 uv run pytest
 uv run python scripts/no_torch_in_src.py
+```
+
+The Catena-X aspect models are pinned to commit hashes and verified against manifests.
+Fetching is only needed after changing a pin:
+
+```bash
+uv run python scripts/fetch_samm.py            # fetch and pin
+uv run python scripts/fetch_samm.py --check    # verify offline; CI runs this
+uv run python -m bpass.samm.generate           # regenerate the bindings
+uv run python -m bpass.samm.generate --check   # fail if committed output is stale
 ```
 
 Training has its own environment, because it is the one place torch is allowed. It is a
@@ -132,7 +145,9 @@ These are enforced by tests and CI, not by intention.
 1. **`src/` never imports `torch`,** and torch never appears in the runtime
    dependency list. `scripts/no_torch_in_src.py` fails the build otherwise.
 2. **`src/bpass/bindings/` is generated and never hand-edited.** CI regenerates and
-   fails on any diff.
+   fails on any diff. The generator raises on any SAMM construct outside the
+   supported subset rather than emitting `Any`, because bindings that typecheck and
+   lie are worse than a build that stops.
 3. **Rule sets are versioned data, never constants.** Every record carries
    `ruleset_version` and `ruleset_sha256`.
 4. **Every record carries `model_sha256`.** Which bytes produced this number is a

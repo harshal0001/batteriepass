@@ -1,0 +1,12 @@
+{
+  "aspect": "BusinessPartnerNumber",
+  "commit": "9adcc37defb4b113ef841916a832377e9f941aaa",
+  "files": {
+    "BusinessPartnerNumber.ttl": "e04b8aaa827e482572695ddedd777d5452ffc6e2656ab6517a817ca794020834"
+  },
+  "license": "CC-BY-4.0",
+  "namespace": "io.catenax.shared.business_partner_number",
+  "repository": "eclipse-tractusx/sldt-semantic-models",
+  "urn": "urn:samm:io.catenax.shared.business_partner_number:2.0.0",
+  "version": "2.0.0"
+}

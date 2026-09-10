@@ -1,0 +1,12 @@
+{
+  "aspect": "PartClassification",
+  "commit": "fd17765fc051905f70dfda971106e9f86eea5352",
+  "files": {
+    "PartClassification.ttl": "441dc44bfce3eb33c48c1834cfc7efcd31a3de3dd81317d730b796df60666d09"
+  },
+  "license": "CC-BY-4.0",
+  "namespace": "io.catenax.shared.part_classification",
+  "repository": "eclipse-tractusx/sldt-semantic-models",
+  "urn": "urn:samm:io.catenax.shared.part_classification:1.0.0",
+  "version": "1.0.0"
+}
