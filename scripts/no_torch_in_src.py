@@ -117,7 +117,7 @@ def main() -> int:
         print(
             "\nsrc/ and the runtime dependencies must stay free of torch. Move the code "
             "to training/, or export the model to ONNX and load it through "
-            "bpass.inference instead.",
+            "bpass.health instead.",
             file=sys.stderr,
         )
         return 1

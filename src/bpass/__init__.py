@@ -1,4 +1,4 @@
-"""Catena-X battery passport assembly, Annex XIII conformance and SoH estimation.
+"""Asset Health Passport: passport assembly, rule-set conformance and health estimation.
 
 Nothing under this package may import ``torch``. Training lives in ``training/``
 and the only artefact that crosses the boundary is an ONNX file. See

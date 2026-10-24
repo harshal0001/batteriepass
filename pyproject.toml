@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "batteriepass"
 version = "0.1.0"
-description = "Catena-X battery passport assembly, Annex XIII conformance and state-of-health estimation"
+description = "Asset Health Passport: standards-based digital passports for degrading assets — EV batteries and turbofan engines"
 requires-python = ">=3.12,<3.13"
 
 # Everything here is baked into the serving image, so everything here is weighed
@@ -16,7 +16,7 @@ dependencies = [
     "uvicorn[standard]>=0.32,<1",
     "pydantic>=2.9,<3",
     "pydantic-settings>=2.6,<3",
-    "onnxruntime>=1.20,<2",   # the serving runtime. See docs/adr/0003.
+    "onnxruntime>=1.20,<2",   # the serving runtime. See docs/adr/0004.
     "numpy>=2.0,<3",          # preprocessing only; pandas stays out of the image
     "boto3>=1.35,<2",         # DynamoDB, nothing else
     "structlog>=24.4,<26",    # structured JSON logs on the request path
