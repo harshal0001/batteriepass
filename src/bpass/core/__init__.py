@@ -5,23 +5,23 @@ It is the only package under strict mypy.
 """
 
 from bpass.core.models import (
-    ANNEX_XIII_CLUSTERS,
-    Cluster,
     ClusterCoverage,
     ConformanceReport,
     DynamicFieldState,
+    FieldProvenance,
+    HealthEstimate,
     PassportRecord,
     PredictionInterval,
-    SoHEstimate,
+    Profile,
 )
 
 __all__ = [
-    "ANNEX_XIII_CLUSTERS",
-    "Cluster",
     "ClusterCoverage",
     "ConformanceReport",
     "DynamicFieldState",
+    "FieldProvenance",
+    "HealthEstimate",
     "PassportRecord",
     "PredictionInterval",
-    "SoHEstimate",
+    "Profile",
 ]

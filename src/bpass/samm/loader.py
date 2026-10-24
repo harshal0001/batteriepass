@@ -33,7 +33,9 @@ XSD = Namespace("http://www.w3.org/2001/XMLSchema#")
 
 MODEL_URN = re.compile(r"^urn:samm:(?P<namespace>[^:]+):(?P<version>[^#]+)#(?P<name>.*)$")
 
-DEFAULT_ROOT = Path(__file__).resolve().parents[3] / "samm-models"
+# shortcut: defaults to the battery profile, the only one with pinned models; give each
+# generator target its own root when the engine profile's aspect model lands.
+DEFAULT_ROOT = Path(__file__).resolve().parents[3] / "profiles" / "battery" / "samm-models"
 
 
 @dataclass(frozen=True)

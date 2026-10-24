@@ -32,7 +32,7 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-RULESETS = REPO / "rulesets" / "annex-xiii"
+RULESETS = REPO / "profiles" / "battery" / "rulesets" / "annex-xiii"
 
 # Access level and scope per part, from the part headings in the annex itself.
 PARTS: dict[int, tuple[str, str]] = {

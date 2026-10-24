@@ -2,15 +2,20 @@
 
 Three ideas drive the shapes here.
 
-1. **Coverage, not a verdict.** Annex XIII splits the passport into seven clusters.
-   A single ``conformant: bool`` tells a manufacturer nothing about what to fix, so
-   every check reports per-cluster counts and names every missing attribute.
-2. **Provenance on every record.** Both the regulation and the model will change.
-   A stored passport that cannot say which model version and which reading of the
-   rules produced it is not auditable, and auditability is the entire point.
-3. **An estimate is not a measurement.** State of health cannot be read off a cell.
-   Annex XIII still requires the number, so the number ships with a calibrated
-   interval and an explicit statement that it is not certified.
+1. **Coverage, not a verdict.** Every rule set groups its rules into clusters — seven
+   for Annex XIII. A single ``conformant: bool`` tells a manufacturer nothing about
+   what to fix, so every check reports per-cluster counts and names every missing
+   attribute.
+2. **Provenance on every record.** The rules, the model and the source documents will
+   all change. A stored passport that cannot say which model, which reading of the
+   rules and which page of which document produced it is not auditable, and
+   auditability is the entire point.
+3. **An estimate is not a measurement.** State of health and remaining useful life
+   cannot be read off an asset. The number ships with a calibrated interval, a drift
+   flag and an explicit statement that it is not certified.
+
+Nothing here knows which asset it describes. Asset specifics — the clusters, the
+passport schema, the model — come from the profile's data. See docs/adr/0003.
 """
 
 from __future__ import annotations
@@ -22,25 +27,11 @@ from typing import Literal, Self
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
-class Cluster(StrEnum):
-    """The seven Annex XIII data clusters.
+class Profile(StrEnum):
+    """The asset profiles. Each is a folder of data under ``profiles/``."""
 
-    Names follow the regulation's own grouping, not an internal taxonomy, so a
-    coverage report can be read against the legal text side by side.
-    """
-
-    GENERAL = "general"
-    COMPLIANCE = "compliance"
-    CARBON_FOOTPRINT = "carbon_footprint"
-    DUE_DILIGENCE = "due_diligence"
-    MATERIALS = "materials"
-    CIRCULARITY = "circularity"
-    PERFORMANCE_DURABILITY = "performance_durability"
-
-
-ANNEX_XIII_CLUSTERS: tuple[Cluster, ...] = tuple(Cluster)
-"""All seven clusters, in report order. A coverage report must cover every one of
-them, including the clusters that scored zero — an omitted cluster reads as a pass."""
+    BATTERY = "battery"
+    ENGINE = "engine"
 
 
 class ClusterCoverage(BaseModel):
@@ -52,7 +43,7 @@ class ClusterCoverage(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    cluster: Cluster
+    cluster: str = Field(min_length=1, description="As declared by the rule set.")
     required: int = Field(ge=0, description="Mandatory attributes in this cluster.")
     present: int = Field(ge=0, description="Mandatory attributes actually supplied.")
     missing: list[str] = Field(
@@ -108,8 +99,8 @@ class PredictionInterval(BaseModel):
         return self
 
 
-class SoHEstimate(BaseModel):
-    """A state-of-health estimate and everything needed to reproduce it.
+class HealthEstimate(BaseModel):
+    """One health estimate and everything needed to reproduce it.
 
     ``model_sha256`` is the hash of the served ONNX file, not of the training run.
     It answers "which bytes produced this number", which is the question an auditor
@@ -121,25 +112,60 @@ class SoHEstimate(BaseModel):
     # namespace guard is switched off here deliberately.
     model_config = ConfigDict(frozen=True, protected_namespaces=())
 
-    soh_percent: float = Field(
+    target: Literal["soh_percent", "rul_cycles"]
+    value: float = Field(
         ge=0.0,
-        le=120.0,
-        description="Remaining capacity as a percentage of rated capacity. Values "
-        "slightly above 100 are physical, not errors: cells often gain capacity "
-        "over the first few dozen cycles.",
+        description="State of health may sit slightly above 100: cells often gain "
+        "capacity over the first few dozen cycles. That is physical, not an error.",
     )
-    soh_interval: PredictionInterval | None = None
-    rul_cycles: int | None = Field(default=None, ge=0)
-    rul_interval: PredictionInterval | None = None
+    interval: PredictionInterval | None = Field(
+        default=None, description="None until the model has been conformally calibrated."
+    )
+    in_distribution: bool | None = Field(
+        default=None,
+        description="False when the inputs drift from the training data, and the estimate "
+        "is shown as unreliable. None until the model ships a drift reference.",
+    )
+    drift_features: list[str] = Field(
+        default_factory=list, description="The inputs that triggered the drift flag."
+    )
 
     model_version: str = Field(min_length=1, examples=["cnn1d-v3"])
     model_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
-    observed_cycles: int = Field(gt=0, description="Cycles the prediction window used.")
+    observed_window: int = Field(gt=0, description="Cycles the prediction window used.")
     predicted_at: datetime
 
     certified: Literal[False] = False
     """Never true. Present so that any consumer reading the JSON sees the claim
     denied explicitly rather than having to know it was never made."""
+
+    @model_validator(mode="after")
+    def _plausible(self) -> Self:
+        if self.target == "soh_percent" and self.value > 120.0:
+            raise ValueError(f"state of health {self.value}% is not physical")
+        if self.drift_features and self.in_distribution is not False:
+            raise ValueError("drift features are listed but the estimate is not flagged")
+        return self
+
+
+class FieldProvenance(BaseModel):
+    """Where one extracted passport value came from.
+
+    A value without a page and a verbatim quote cannot be checked against its source,
+    so extraction drops any value that lacks them. See docs/adr/0006.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    field: str = Field(min_length=1, description="Passport field path.")
+    value: str
+    source_sha256: str = Field(pattern=r"^[0-9a-f]{64}$", description="Of the source PDF.")
+    page: int = Field(ge=1)
+    quote: str = Field(min_length=1, description="Verbatim text the value came from.")
+    method: Literal["llm", "manual"]
+    verified: bool = Field(
+        description="The quote was found on that page and the value agrees with it."
+    )
 
 
 class DynamicFieldState(BaseModel):
@@ -168,6 +194,9 @@ class ConformanceReport(BaseModel):
 
     ruleset_version: str = Field(min_length=1, examples=["annex-xiii-2026-07"])
     ruleset_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    clusters: tuple[str, ...] = Field(
+        min_length=1, description="Every cluster the rule set declares, in report order."
+    )
     coverage: list[ClusterCoverage]
     dynamic_fields: list[DynamicFieldState] = Field(default_factory=list)
     checked_at: datetime
@@ -177,9 +206,14 @@ class ConformanceReport(BaseModel):
         seen = [c.cluster for c in self.coverage]
         if len(seen) != len(set(seen)):
             raise ValueError("a cluster is reported twice")
-        if set(seen) != set(ANNEX_XIII_CLUSTERS):
-            absent = sorted(set(ANNEX_XIII_CLUSTERS) - set(seen))
-            raise ValueError(f"coverage omits clusters: {', '.join(absent)}")
+        # An omitted cluster reads as a pass, so every declared cluster must appear,
+        # including the ones that scored zero.
+        if set(seen) != set(self.clusters):
+            absent = sorted(set(self.clusters) - set(seen))
+            unknown = sorted(set(seen) - set(self.clusters))
+            if absent:
+                raise ValueError(f"coverage omits clusters: {', '.join(absent)}")
+            raise ValueError(f"coverage reports undeclared clusters: {', '.join(unknown)}")
         return self
 
     @property
@@ -201,24 +235,36 @@ class ConformanceReport(BaseModel):
 
 
 class PassportRecord[PassportT: BaseModel](BaseModel):
-    """A stored passport: the document, the estimate that filled its dynamic fields,
-    and the conformance verdict that was true when it was written.
+    """A stored passport: the document, the estimates that filled its dynamic fields,
+    where its extracted values came from, and the conformance verdict that was true
+    when it was written.
 
     Generic over the passport type so that ``core`` stays independent of
     ``bindings``, which is generated from the SAMM aspect model and regenerated
     whenever Catena-X publishes a new version. In the running service ``PassportT``
-    is the generated ``BatteryPass``.
+    is the profile's generated passport model, such as ``BatteryPass``.
     """
 
     model_config = ConfigDict(frozen=True)
 
     id: str = Field(min_length=1, description="DynamoDB partition key.")
+    profile: Profile
     passport: PassportT
-    soh: SoHEstimate
+    health: list[HealthEstimate] = Field(
+        min_length=1, description="One per target: a battery carries both SoH and RUL."
+    )
     conformance: ConformanceReport
+    provenance: list[FieldProvenance] = Field(default_factory=list)
     is_demo: bool = Field(
         default=False,
         description="Seeded records backing the public QR links. The store refuses to "
         "overwrite or delete these.",
     )
     created_at: datetime
+
+    @model_validator(mode="after")
+    def _one_estimate_per_target(self) -> Self:
+        targets = [h.target for h in self.health]
+        if len(targets) != len(set(targets)):
+            raise ValueError("more than one health estimate for the same target")
+        return self

@@ -41,7 +41,7 @@ from pathlib import Path
 from typing import Any
 
 REPO = Path(__file__).resolve().parent.parent
-SOURCES = REPO / "samm-models" / "sources.json"
+SOURCES = REPO / "profiles" / "battery" / "samm-models" / "sources.json"
 RAW = "https://raw.githubusercontent.com"
 TIMEOUT_SECONDS = 60
 
@@ -66,7 +66,7 @@ class Model:
 
     @property
     def directory(self) -> Path:
-        return REPO / "samm-models" / self.namespace / self.version
+        return REPO / "profiles" / "battery" / "samm-models" / self.namespace / self.version
 
     def url(self, relative: str) -> str:
         return f"{RAW}/{self.repository}/{self.commit}/{self.namespace}/{self.version}/{relative}"

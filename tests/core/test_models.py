@@ -15,24 +15,25 @@ import pytest
 from pydantic import BaseModel, ValidationError
 
 from bpass.core import (
-    ANNEX_XIII_CLUSTERS,
-    Cluster,
     ClusterCoverage,
     ConformanceReport,
     DynamicFieldState,
+    FieldProvenance,
+    HealthEstimate,
     PassportRecord,
     PredictionInterval,
-    SoHEstimate,
+    Profile,
 )
 
 SHA = "a" * 64
 NOW = datetime(2026, 9, 10, 12, 0, tzinfo=UTC)
+CLUSTERS = ("general", "materials", "carbon_footprint")
 
 
-def full_coverage(missing_from: Cluster | None = None) -> list[ClusterCoverage]:
-    """A report covering all seven clusters, optionally with one gap."""
+def full_coverage(missing_from: str | None = None) -> list[ClusterCoverage]:
+    """A report covering every declared cluster, optionally with one gap."""
     out = []
-    for cluster in ANNEX_XIII_CLUSTERS:
+    for cluster in CLUSTERS:
         if cluster == missing_from:
             out.append(
                 ClusterCoverage(cluster=cluster, required=3, present=2, missing=["carbonFootprint"])
@@ -46,19 +47,19 @@ class TestClusterCoverage:
     def test_missing_list_must_account_for_every_gap(self) -> None:
         # Two attributes absent but only one named: the report would understate the work.
         with pytest.raises(ValidationError, match="unaccounted for"):
-            ClusterCoverage(cluster=Cluster.MATERIALS, required=5, present=3, missing=["a"])
+            ClusterCoverage(cluster="materials", required=5, present=3, missing=["a"])
 
     def test_present_cannot_exceed_required(self) -> None:
         with pytest.raises(ValidationError, match="exceeds required"):
-            ClusterCoverage(cluster=Cluster.GENERAL, required=2, present=3, missing=[])
+            ClusterCoverage(cluster="general", required=2, present=3, missing=[])
 
     def test_complete_when_nothing_missing(self) -> None:
-        assert ClusterCoverage(cluster=Cluster.GENERAL, required=4, present=4).complete
+        assert ClusterCoverage(cluster="general", required=4, present=4).complete
 
     def test_an_empty_cluster_is_complete(self) -> None:
         # A cluster with no mandatory attributes is vacuously satisfied. It must still
         # appear in the report so a reader can see it was considered.
-        assert ClusterCoverage(cluster=Cluster.DUE_DILIGENCE, required=0, present=0).complete
+        assert ClusterCoverage(cluster="due_diligence", required=0, present=0).complete
 
 
 class TestConformanceReport:
@@ -68,7 +69,19 @@ class TestConformanceReport:
             ConformanceReport(
                 ruleset_version="annex-xiii-2026-07",
                 ruleset_sha256=SHA,
+                clusters=CLUSTERS,
                 coverage=partial,
+                checked_at=NOW,
+            )
+
+    def test_a_cluster_the_rule_set_does_not_declare_is_rejected(self) -> None:
+        extra = [*full_coverage(), ClusterCoverage(cluster="invented", required=1, present=1)]
+        with pytest.raises(ValidationError, match="undeclared clusters"):
+            ConformanceReport(
+                ruleset_version="annex-xiii-2026-07",
+                ruleset_sha256=SHA,
+                clusters=CLUSTERS,
+                coverage=extra,
                 checked_at=NOW,
             )
 
@@ -78,6 +91,7 @@ class TestConformanceReport:
             ConformanceReport(
                 ruleset_version="annex-xiii-2026-07",
                 ruleset_sha256=SHA,
+                clusters=CLUSTERS,
                 coverage=doubled,
                 checked_at=NOW,
             )
@@ -86,22 +100,24 @@ class TestConformanceReport:
         report = ConformanceReport(
             ruleset_version="annex-xiii-2026-07",
             ruleset_sha256=SHA,
+            clusters=CLUSTERS,
             coverage=full_coverage(),
             checked_at=NOW,
         )
         assert report.conformant
-        assert report.required == report.present == 21
+        assert report.required == report.present == 9
 
         gapped = report.model_copy(
-            update={"coverage": full_coverage(missing_from=Cluster.CARBON_FOOTPRINT)}
+            update={"coverage": full_coverage(missing_from="carbon_footprint")}
         )
         assert not gapped.conformant
-        assert gapped.present == 20
+        assert gapped.present == 8
 
     def test_stale_dynamic_fields_are_reported(self) -> None:
         report = ConformanceReport(
             ruleset_version="annex-xiii-2026-07",
             ruleset_sha256=SHA,
+            clusters=CLUSTERS,
             coverage=full_coverage(),
             dynamic_fields=[
                 DynamicFieldState(
@@ -123,53 +139,68 @@ class TestConformanceReport:
         assert [f.attribute for f in report.stale_fields(NOW)] == ["stateOfHealth"]
 
 
-class TestSoHEstimate:
+def estimate(**overrides: object) -> HealthEstimate:
+    fields: dict[str, object] = {
+        "target": "soh_percent",
+        "value": 88.2,
+        "model_version": "cnn1d-v3",
+        "model_sha256": SHA,
+        "observed_window": 100,
+        "predicted_at": NOW,
+    }
+    return HealthEstimate.model_validate(fields | overrides)
+
+
+class TestHealthEstimate:
     def test_capacity_above_100_percent_is_allowed(self) -> None:
         # Cells commonly gain a little capacity over their first cycles. Clamping at
         # 100 would silently rewrite a real measurement.
-        assert SoHEstimate(
-            soh_percent=101.4,
-            model_version="cnn1d-v3",
-            model_sha256=SHA,
-            observed_cycles=100,
-            predicted_at=NOW,
-        ).soh_percent == pytest.approx(101.4)
+        assert estimate(value=101.4).value == pytest.approx(101.4)
+
+    def test_implausible_state_of_health_is_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="not physical"):
+            estimate(value=150.0)
+
+    def test_remaining_useful_life_is_not_capped_like_a_percentage(self) -> None:
+        assert estimate(target="rul_cycles", value=180.0).value == 180.0
 
     def test_model_hash_must_be_a_sha256(self) -> None:
         with pytest.raises(ValidationError):
-            SoHEstimate(
-                soh_percent=90.0,
-                model_version="cnn1d-v3",
-                model_sha256="not-a-hash",
-                observed_cycles=100,
-                predicted_at=NOW,
-            )
+            estimate(model_sha256="not-a-hash")
 
     def test_certified_cannot_be_set_true(self) -> None:
         with pytest.raises(ValidationError):
-            SoHEstimate(
-                soh_percent=90.0,
-                model_version="cnn1d-v3",
-                model_sha256=SHA,
-                observed_cycles=100,
-                predicted_at=NOW,
-                certified=True,
-            )
+            estimate(certified=True)
+
+    def test_drift_features_require_the_unreliable_flag(self) -> None:
+        # Listing the drifting inputs while still presenting the estimate as reliable
+        # would hide the warning the features exist to give.
+        with pytest.raises(ValidationError, match="not flagged"):
+            estimate(drift_features=["voltage_variance"])
+        flagged = estimate(in_distribution=False, drift_features=["voltage_variance"])
+        assert flagged.drift_features == ["voltage_variance"]
 
     def test_provenance_fields_survive_serialisation(self) -> None:
         # Pydantic reserves the model_ prefix; if the namespace guard were left on,
         # these would be renamed or warned away and provenance would leave the record.
-        estimate = SoHEstimate(
-            soh_percent=88.2,
-            model_version="cnn1d-v3",
-            model_sha256=SHA,
-            observed_cycles=100,
-            predicted_at=NOW,
-        )
-        dumped = estimate.model_dump()
+        dumped = estimate().model_dump()
         assert dumped["model_version"] == "cnn1d-v3"
         assert dumped["model_sha256"] == SHA
         assert dumped["certified"] is False
+
+
+class TestFieldProvenance:
+    def test_pages_are_counted_from_one(self) -> None:
+        with pytest.raises(ValidationError):
+            FieldProvenance(
+                field="manufacturer",
+                value="A123",
+                source_sha256=SHA,
+                page=0,
+                quote="Manufacturer: A123",
+                method="llm",
+                verified=True,
+            )
 
 
 class TestPredictionInterval:
@@ -185,7 +216,7 @@ class TestPredictionInterval:
 
 
 class DummyPassport(BaseModel):
-    """Stands in for the generated BatteryPass, which week 1 produces."""
+    """Stands in for a profile's generated passport model."""
 
     manufacturer: str
 
@@ -194,17 +225,13 @@ class TestPassportRecord:
     def test_record_is_generic_over_the_generated_passport_type(self) -> None:
         record = PassportRecord[DummyPassport](
             id="bp-0001",
+            profile=Profile.BATTERY,
             passport=DummyPassport(manufacturer="A123"),
-            soh=SoHEstimate(
-                soh_percent=88.2,
-                model_version="cnn1d-v3",
-                model_sha256=SHA,
-                observed_cycles=100,
-                predicted_at=NOW,
-            ),
+            health=[estimate(), estimate(target="rul_cycles", value=640.0)],
             conformance=ConformanceReport(
                 ruleset_version="annex-xiii-2026-07",
                 ruleset_sha256=SHA,
+                clusters=CLUSTERS,
                 coverage=full_coverage(),
                 checked_at=NOW,
             ),
@@ -214,3 +241,20 @@ class TestPassportRecord:
         assert record.is_demo is False
         # Round-trips: what goes into DynamoDB comes back the same shape.
         assert PassportRecord[DummyPassport].model_validate(record.model_dump()) == record
+
+    def test_one_estimate_per_target(self) -> None:
+        with pytest.raises(ValidationError, match="same target"):
+            PassportRecord[DummyPassport](
+                id="bp-0002",
+                profile=Profile.BATTERY,
+                passport=DummyPassport(manufacturer="A123"),
+                health=[estimate(), estimate(value=80.0)],
+                conformance=ConformanceReport(
+                    ruleset_version="annex-xiii-2026-07",
+                    ruleset_sha256=SHA,
+                    clusters=CLUSTERS,
+                    coverage=full_coverage(),
+                    checked_at=NOW,
+                ),
+                created_at=NOW,
+            )
