@@ -110,7 +110,7 @@ MAPPING: dict[str, tuple[str, tuple[str, ...], bool, str]] = {
         False,
         "No path. BatteryPass 6.1.0 models no part numbers for components or contact "
         "details for replacement spares. An unmapped mandatory point is reported as "
-        "such rather than quietly dropped — see ADR 0009.",
+        "such rather than quietly dropped — see ADR 0002.",
     ),
     "2.c": ("circularity", ("safety.dismantling",), False, ""),
     "2.d": ("circularity", ("safety.safetyMeasures",), False, ""),

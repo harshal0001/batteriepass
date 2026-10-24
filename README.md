@@ -1,116 +1,182 @@
-# batteriepass
+# Asset Health Passport
 
-Estimates the state of health of a lithium-ion cell from its early cycling data,
-assembles a Catena-X-conformant battery passport around that estimate, checks the
-result against the attributes Annex XIII of Regulation (EU) 2023/1542 actually
-mandates, and serves it at a public QR-addressable URL.
+A digital passport for **assets that wear out**. For each asset it:
 
-From 18 February 2027, EV batteries, industrial batteries above 2 kWh and
-light-means-of-transport batteries placed on the EU market must carry a digital
-passport. Annex XIII splits its contents into static fields — chemistry,
-manufacturing site — and **dynamic** fields specific to the individual cell, of which
-state of health is one. State of health cannot be measured directly. It has to be
-estimated. Remove the model and the passport is non-compliant.
+1. builds a passport document from a published standard's aspect model,
+2. checks that passport against the rules that apply to the asset, cluster by cluster,
+3. predicts how much life the asset has left, with a calibrated uncertainty interval and
+   a warning when the input looks unlike anything the model was trained on,
+4. fills the static fields from source documents, where every value cites the page and
+   the exact quote it came from,
+5. answers questions about the governing regulation, citing the article or paragraph,
 
-> **This is not a certified measurement.** The state-of-health figure is a statistical
-> estimate from a research model trained on laboratory cycling data, and it ships with
-> a calibrated interval saying how much to trust it. It is not type-approved and must
-> not be used for a safety, warranty or resale decision. See
-> [`models/model_card.md`](models/model_card.md).
+and serves the result as a public page addressable by QR code.
+
+The core does not know which kind of asset it is handling. Each asset type is a **profile**,
+a folder of data and artefacts:
+
+| | **Battery** (automotive) | **Turbofan engine** (aerospace) |
+|---|---|---|
+| Why a passport | EU Battery Regulation 2023/1542: digital battery passport mandatory from 18 Feb 2027 | EASA continuing-airworthiness record-keeping (Part-M) and predictive maintenance |
+| Passport schema | Catena-X `io.catenax.battery.battery_pass` (SAMM) | `EngineHealthPass`, a SAMM aspect model written for this project; nameplate aligned to the IDTA Digital Nameplate |
+| Rules checked | Annex XIII mandatory attributes, seven clusters | Record items from Part-M M.A.305, each check citing its paragraph |
+| Health estimate | State of health (% capacity) and remaining useful life | Remaining useful life (cycles) |
+| Training data | Severson / MIT–Stanford LFP cells; NASA PCoE and Oxford for transfer | NASA C-MAPSS FD001–FD004 |
+| Source documents | Cell datasheets | EASA Type Certificate Data Sheets |
+| Regulation corpus | Regulation (EU) 2023/1542, English and German (EUR-Lex) | EASA Easy Access Rules for Continuing Airworthiness |
+
+> **Not a certified measurement, and not an airworthiness tool.** Every health figure is a
+> statistical estimate from a research model trained on public laboratory or simulation
+> data. It ships with an interval saying how far to trust it, and must not be used for a
+> safety, warranty, resale or maintenance decision. There is no EU "engine passport"
+> mandate: the engine profile shows the same method on public data and makes no
+> airworthiness determination.
 
 ---
 
-## Results
+## How it fits together
 
-Every number here comes from a real run on a cell-disjoint split. An empty cell means
-not yet measured, and stays empty until it is. Nothing in this table is an estimate of
-what the number will be.
+### One core, pluggable profiles
 
-### State of health
+```mermaid
+flowchart TB
+    subgraph CORE["Core (asset-agnostic)"]
+        GEN[SAMM → Pydantic generator]
+        CONF[Conformance engine<br/>rules as versioned data]
+        HEALTH[Health service<br/>ONNX ensemble · conformal interval · drift flag]
+        EXT[Document extraction<br/>page-cited fields, verified in code]
+        RAG[Regulation Q&A<br/>retrieve → cite]
+        STORE[(DynamoDB<br/>passport records)]
+    end
 
-| | Test error (MAPE) | 90% interval, empirical coverage |
-|---|---|---|
-| Published baseline — Severson et al., *Nature Energy* 2019 | 9.1% | — |
-| Elastic net on ΔQ(V) features, reproduction | | |
-| 1D CNN over voltage–capacity curves | | |
-| Sequence model over per-cycle features | | |
+    subgraph BAT["profiles/battery"]
+        B1[BatteryPass aspect model]
+        B2[Annex XIII rule set]
+        B3[SoH / RUL model .onnx]
+        B4[Datasheet extraction schema]
+        B5[Battery Regulation corpus]
+    end
 
-Errors are mean ± standard deviation across fixed seeds. One run is an anecdote.
+    subgraph ENG["profiles/engine"]
+        E1[EngineHealthPass aspect model]
+        E2[M.A.305 rule set]
+        E3[RUL model .onnx]
+        E4[TCDS extraction schema]
+        E5[EASA rules corpus]
+    end
 
-### Cross-dataset transfer
+    BAT --> CORE
+    ENG --> CORE
+    CORE --> API[FastAPI on AWS Lambda] --> UI[Public passport page + QR]
+```
 
-Trained on Severson, tested on chemistries and protocols the model has never seen.
-Each transfer set is used as a test set exactly once and never tuned on.
+A profile holds data, never logic. Adding a third asset type means adding a folder.
 
-| Test set | Chemistry | Test error | Interval coverage |
-|---|---|---|---|
-| Severson, held out | LFP, fast charge, 30 °C | | |
-| NASA PCoE | | | |
-| Oxford Battery Degradation | | | |
+### What happens when a passport is created
 
-The gap between the first row and the others is the honest headline. Cross-chemistry
-generalisation is the open problem in this field, and reporting the drop is the
-difference between this and a notebook.
+```mermaid
+flowchart LR
+    IN[POST /passports<br/>profile · static fields · sensor series] --> HEALTH
+    DOC[Source PDF] --> EXT[Extract fields<br/>value · page · quote] --> VER{Quote on that page<br/>and value matches?}
+    VER -- no --> DROP[Field dropped,<br/>never guessed]
+    VER -- yes --> ASM
 
-### Conformance and service
+    HEALTH[Ensemble prediction] --> INT[± conformal quantile<br/>90% interval]
+    HEALTH --> DRIFT{Inputs like the<br/>training data?}
+    DRIFT -- no --> FLAG[Marked unreliable,<br/>features listed]
+    INT --> ASM
+    FLAG --> ASM
+    DRIFT -- yes --> ASM
+
+    ASM[Assemble passport<br/>generated bindings] --> CHK[Check against<br/>versioned rule set] --> REC[(Record:<br/>model hash · rule-set hash<br/>· provenance)]
+    REC --> PAGE["Public page /p/id + QR"]
+```
+
+Every number on a passport can be traced. The health value carries the SHA-256 of the
+model file that produced it, each extracted field carries its page and quote, and the
+conformance result carries the version and hash of the rule set it was checked against.
+
+### Training versus serving
+
+```mermaid
+flowchart LR
+    subgraph T["Training (offline, Kaggle GPU)"]
+        D1[Battery cycling data] --> M1[Battery models]
+        D2[C-MAPSS sensor data] --> M2[Engine models]
+        M1 & M2 --> CAL[5-seed ensemble<br/>+ conformal calibration on held-out units]
+        CAL --> X[model.onnx · calibration.json<br/>· drift_reference.json · model card]
+    end
+    X -.->|baked into the image| L[Lambda: ONNX Runtime, no torch]
+```
+
+Training needs PyTorch and a GPU. Serving needs ONNX Runtime and a CPU. Only the exported
+artefacts cross between them, and CI fails the build if `torch` ever appears under `src/`.
+The reason is cold start: a CPU-only torch is roughly 700 MB, onnxruntime about 50 MB.
+
+### Where the rules come from
+
+```mermaid
+flowchart LR
+    REG[Regulation text<br/>EUR-Lex consolidated] -->|fetched, hashed, committed| TXT[annex-xiii.txt<br/>+ manifest]
+    TXT -->|parsed, never retyped| RS[ruleset.json<br/>id · verbatim text · access level]
+    SAMM[Catena-X aspect model<br/>pinned by commit hash] -->|generator| BIND[Pydantic bindings]
+    RS -->|every path checked<br/>against the schema| BIND
+```
+
+The rule set is built from the regulation itself, not from the aspect model's
+documentation, which leaves out six of the 28 mandatory points. If the regulation's
+wording changes, the loader refuses the rule set until the mapping is reviewed again.
+
+---
+
+## Tech stack
+
+| Layer | Choice |
+|---|---|
+| Language | Python 3.12, managed with `uv` |
+| Schema | SAMM aspect models (Turtle) → rdflib → generated Pydantic v2 bindings |
+| AAS export | `aas-core3.0` / BaSyx Python SDK |
+| Training | PyTorch (1D CNN, LSTM), scikit-learn baselines (elastic net, gradient boosting) |
+| Uncertainty | Deep ensembles + split conformal prediction |
+| Drift | Per-feature PSI / KS tests against a stored training reference |
+| Serving inference | ONNX Runtime |
+| Document extraction | pdfplumber page text + an LLM with structured output, behind one `Extractor` interface: a QLoRA-fine-tuned open model or the Claude API |
+| Regulation Q&A | Multilingual embedding model in ONNX, NumPy index, extractive cited answers |
+| Experiment tracking | MLflow (local) |
+| API | FastAPI + Pydantic v2 |
+| Compute / storage | AWS Lambda (arm64 container, Function URL) + DynamoDB, `eu-central-1` |
+| Frontend | React + TypeScript + Vite, served from the same container |
+| Model hosting | Hugging Face Hub |
+| CI | GitHub Actions: lint, types, tests, and checks on pinned models, generated code and rule sets |
+
+## Code layout
+
+| Path | Owns |
+|---|---|
+| `src/bpass/core/` | The domain contract. Depends on nothing but Pydantic; strict-typed |
+| `src/bpass/samm/` | SAMM Turtle → Pydantic generator. Knows RDF, not any asset |
+| `src/bpass/bindings/` | Generated aspect-model bindings. Committed, never hand-edited |
+| `src/bpass/conform/` | Rule-set loading, versioning and per-cluster checks |
+| `src/bpass/passport/` | Assembly, provenance and the record store |
+| `src/bpass/api/` | FastAPI routes. Transport only |
+| `training/` | The only place `torch` is imported |
+| `samm-models/` | Pinned Catena-X aspect models, hashed |
+| `rulesets/` | Verbatim regulation text and rule data, hashed |
+| `scripts/` | Fetch, pin and verify upstream sources; the torch guard |
+| `docs/adr/` | Why things are the way they are |
+
+## Measured so far
 
 | Metric | Value |
 |---|---|
 | Aspect-model entities bound | 65 |
 | Properties whose payload name differs from their model name | 105 |
-| Annex XIII mandatory points encoded, all seven clusters | 28 |
-| Of those, dynamic fields requiring refresh | 4 |
-| ONNX vs PyTorch, max abs difference | |
-| Passport assembly incl. inference, p50 / p95 | |
-| Cold start to first response | |
+| Annex XIII mandatory points encoded | 28 |
+| Of those, dynamic fields that need refreshing | 4 |
+| Passport paths mapped, all resolving against the schema | 37 |
 
----
-
-## How it works
-
-```mermaid
-flowchart LR
-    subgraph T["Training — Kaggle GPU, offline"]
-        D[Severson · NASA · Oxford] --> F[Cycle features<br/>Parquet cache]
-        F --> B[Elastic-net baseline]
-        F --> M[1D CNN → sequence model]
-        M --> K[Conformal calibration<br/>held-out cells]
-        K --> X[model.onnx<br/>+ parity test + model card]
-    end
-
-    subgraph S["Serving — AWS eu-central-1"]
-        X -.->|baked into image| R[ONNX Runtime]
-        I[POST /passports] --> R
-        R --> A[Assemble passport<br/>generated bindings]
-        G[SAMM Turtle] -->|generator, build time| A
-        A --> C[Annex XIII check<br/>versioned rule set]
-        C --> P[(DynamoDB)]
-        P --> V[Public page /p/id<br/>+ QR]
-    end
-```
-
-Two programs, one artefact. Training needs PyTorch and a GPU. Serving needs ONNX
-Runtime and a CPU. The only thing that crosses between them is a `.onnx` file, and CI
-fails the build if `torch` ever appears under `src/`. The reason is cold start: a
-CPU-only torch install is roughly 700 MB against onnxruntime's 50 MB.
-
-## Layout
-
-| Path | Owns |
-|---|---|
-| `src/bpass/core/` | The domain contract. Depends on nothing, strict-typed |
-| `src/bpass/samm/` | SAMM Turtle → Pydantic generator. Knows RDF, not batteries |
-| `src/bpass/bindings/` | Generated aspect-model bindings. Committed, never hand-edited |
-| `src/bpass/conform/` | Annex XIII rule sets and per-cluster checks |
-| `src/bpass/data/` | Dataset loaders, feature extraction, split manifests |
-| `src/bpass/inference/` | ONNX session, preprocessing, prediction |
-| `src/bpass/passport/` | Assembly, provenance, the record store |
-| `src/bpass/api/` | FastAPI routes. Transport only |
-| `training/` | The only place `torch` is imported |
-| `samm-models/` | Pinned Catena-X aspect models, hashed. Nine of them |
-| `rulesets/annex-xiii/` | Verbatim regulation text and rule data, hashed |
-| `manifests/` | Committed cell-disjoint split manifests |
-| `docs/adr/` | Why things are the way they are |
+Model accuracy, interval coverage, extraction precision and latency appear here only once
+they are measured on a real run.
 
 ## Local development
 
@@ -120,73 +186,61 @@ uv run pytest
 uv run python scripts/no_torch_in_src.py
 ```
 
-The Catena-X aspect models are pinned to commit hashes and verified against manifests.
-Fetching is only needed after changing a pin:
+Upstream sources are pinned and verified against manifests. Fetching is only needed after
+changing a pin:
 
 ```bash
-uv run python scripts/fetch_samm.py            # fetch and pin
-uv run python scripts/fetch_samm.py --check    # verify offline; CI runs this
-uv run python -m bpass.samm.generate           # regenerate the bindings
-uv run python -m bpass.samm.generate --check   # fail if committed output is stale
+uv run python scripts/fetch_samm.py --check              # aspect models match their hashes
+uv run python -m bpass.samm.generate --check             # committed bindings are current
+uv run python scripts/fetch_annex_xiii.py --check        # regulation text matches its manifest
+uv run python scripts/build_annex_xiii_ruleset.py --check  # rule set matches a fresh build
 ```
 
-Annex XIII is pinned the same way, from the consolidated regulation text on EUR-Lex:
-
-```bash
-uv run python scripts/fetch_annex_xiii.py --check        # verify offline
-uv run python scripts/build_annex_xiii_ruleset.py        # rebuild rules from the text
-```
-
-Training has its own environment, because it is the one place torch is allowed. It is a
-plain requirements file so that torch can never enter `uv.lock`, and so a Kaggle
-notebook can install it in one line:
+Training has its own environment, so that torch can never enter `uv.lock`:
 
 ```bash
 pip install -r training/requirements.txt
-uv run python training/baseline.py --split manifests/severson-v1.json
 ```
 
 ## Non-negotiables
 
-These are enforced by tests and CI, not by intention.
+Enforced by tests and CI, not by intention.
 
-1. **`src/` never imports `torch`,** and torch never appears in the runtime
-   dependency list. `scripts/no_torch_in_src.py` fails the build otherwise.
-2. **`src/bpass/bindings/` is generated and never hand-edited.** CI regenerates and
-   fails on any diff. The generator raises on any SAMM construct outside the
-   supported subset rather than emitting `Any`, because bindings that typecheck and
-   lie are worse than a build that stops.
+1. **`src/` never imports `torch`**, and torch never appears in the runtime dependencies.
+2. **Generated bindings are never hand-edited.** CI regenerates them and fails on any
+   difference. The generator stops on any SAMM construct it does not support rather than
+   emitting `Any`.
 3. **Rule sets are versioned data, never constants.** Every record carries
    `ruleset_version` and `ruleset_sha256`.
-4. **Every record carries `model_sha256`.** Which bytes produced this number is a
-   question an auditor asks and a training-run id cannot answer.
-5. **Split by cell, never by cycle,** and commit the split manifest. Cycles from one
-   cell appearing in both train and test is the classic invalidating error in this
-   literature.
-6. **Respect the observation window.** Predicting from the first 100 cycles means no
-   feature touches cycle 101 or later, normalisation statistics included.
-7. **Transfer sets are test sets exactly once.** Never tuned on.
-8. **Never claim certification.** The service checks against a published reading of
-   Annex XIII. That sentence is true; the other one is not.
-9. **Every number in this README comes from a real run.** An empty cell is correct
-   until measured.
+4. **Every health estimate carries `model_sha256`**, the hash of the bytes that produced it.
+5. **Split by unit, never by time step** (cell or engine), and commit the split. Validation
+   and calibration units are carved out of training; official and transfer test sets are
+   used exactly once and never tuned on.
+6. **Respect the observation window.** No feature, normalisation statistic included,
+   touches data past it.
+7. **No extracted value without a verified citation.** If the quote is not on the cited
+   page, the field is dropped.
+8. **No regulation answer without a retrieved citation.** Otherwise it refuses.
+9. **Never claim certification.** The service checks against a published reading of the
+   rules.
+10. **Every number in this README comes from a real run.**
 
 ## Out of scope
 
-Catena-X network onboarding and certification, the Eclipse Dataspace Connector,
-verifiable credentials and wallets, carbon-footprint calculation methodology, and
-supply-chain due-diligence data collection. The passport is exposed in the Asset
-Administration Shell submodel shape a connector would front, but the dataspace
-plumbing itself is not built.
+Catena-X network onboarding and certification, dataspace connectors, verifiable
+credentials and wallets, carbon-footprint methodology, supply-chain due-diligence data
+collection, and any maintenance-planning or airworthiness function. The passport is
+exposed in the Asset Administration Shell submodel shape a connector would sit in front
+of, but the dataspace plumbing itself is not built.
 
 ## References
 
-- Catena-X semantic models — [`eclipse-tractusx/sldt-semantic-models`](https://github.com/eclipse-tractusx/sldt-semantic-models)
-- Catena-X reference application — [`eclipse-tractusx/digital-product-pass`](https://github.com/eclipse-tractusx/digital-product-pass)
-- Catena-X standards CX-0143 (digital product passport) and CX-0003 (SAMM)
+- Catena-X semantic models: [`eclipse-tractusx/sldt-semantic-models`](https://github.com/eclipse-tractusx/sldt-semantic-models); standards CX-0143 and CX-0003
 - Regulation (EU) 2023/1542, Article 77 and Annex XIII
 - Severson et al., *Data-driven prediction of battery cycle life before capacity degradation*, Nature Energy 2019
-- NASA PCoE battery datasets · Oxford Battery Degradation Dataset
+- NASA PCoE battery datasets · Oxford Battery Degradation Dataset · NASA C-MAPSS
+- EASA Easy Access Rules for Continuing Airworthiness (Regulation (EU) No 1321/2014)
+- EASA Type Certificate Data Sheets · IDTA Digital Nameplate submodel template
 
 ## Licence
 

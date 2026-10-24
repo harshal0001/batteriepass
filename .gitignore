@@ -24,12 +24,11 @@ training/checkpoints/
 # Node
 node_modules/
 frontend/dist/
-.vercel/
 
 # Local environment
 .env
 .env.local
 
-# The planning brief. Kept local: it is written in portfolio-and-hiring terms that
+# Planning briefs. Kept local: written in portfolio-and-hiring terms that
 # read oddly in a public repository. The decisions it drove live in docs/adr/.
-project-2-batteriepass.md
+project-2-batteriepass*.md

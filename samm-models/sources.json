@@ -1,6 +1,6 @@
 {
   "$comment": [
-    "Pinned Catena-X aspect models. Data, not constants \u2014 see docs/adr/0005.",
+    "Pinned Catena-X aspect models. Data, not constants \u2014 see docs/adr/0002.",
     "Each model is pinned to an upstream commit, not to a branch. A tag can be moved and",
     "a branch certainly will be; a commit hash is the only reference that means the same",
     "thing tomorrow. scripts/fetch_samm.py fetches, hashes and verifies against manifests.",

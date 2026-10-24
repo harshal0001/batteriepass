@@ -1,5 +1,5 @@
 # Training only. This file is never installed into the serving image, and torch never
-# appears in the project's runtime dependencies — see docs/adr/0003 and
+# appears in the project's runtime dependencies — see docs/adr/0004 and
 # scripts/no_torch_in_src.py, which fails CI if that ever changes.
 #
 # Kept as a plain requirements file rather than a dependency group so that torch can
