@@ -160,8 +160,7 @@ wording changes, the loader refuses the rule set until the mapping is reviewed a
 | `src/bpass/passport/` | Assembly, provenance and the record store |
 | `src/bpass/api/` | FastAPI routes. Transport only |
 | `training/` | The only place `torch` is imported |
-| `samm-models/` | Pinned Catena-X aspect models, hashed |
-| `rulesets/` | Verbatim regulation text and rule data, hashed |
+| `profiles/battery/` | The battery profile: pinned Catena-X aspect models and the Annex XIII rule set, all hashed. Data only |
 | `scripts/` | Fetch, pin and verify upstream sources; the torch guard |
 | `docs/adr/` | Why things are the way they are |
 

@@ -18,7 +18,15 @@ from bpass.samm.walk import resolve
 
 REPO = Path(__file__).resolve().parents[2]
 BATTERY_PASS_URN = "urn:samm:io.catenax.battery.battery_pass:6.1.0#BatteryPass"
-GEN = REPO / "samm-models" / "io.catenax.battery.battery_pass" / "6.1.0" / "gen"
+GEN = (
+    REPO
+    / "profiles"
+    / "battery"
+    / "samm-models"
+    / "io.catenax.battery.battery_pass"
+    / "6.1.0"
+    / "gen"
+)
 
 
 @pytest.fixture(scope="session")

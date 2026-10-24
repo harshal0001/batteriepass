@@ -27,9 +27,9 @@ from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
-from bpass.core import Cluster
-
-DEFAULT_ROOT = Path(__file__).resolve().parents[3] / "rulesets" / "annex-xiii"
+DEFAULT_ROOT = (
+    Path(__file__).resolve().parents[3] / "profiles" / "battery" / "rulesets" / "annex-xiii"
+)
 
 
 class RulesetError(Exception):
@@ -56,7 +56,7 @@ class Rule:
     text: str
     access: str
     scope: str
-    cluster: Cluster
+    cluster: str
     paths: tuple[str, ...]
     dynamic: bool
     max_age_days: int | None = None
@@ -77,9 +77,10 @@ class Rule:
 class Ruleset:
     version: str
     sha256: str
+    clusters: tuple[str, ...]
     rules: tuple[Rule, ...]
 
-    def by_cluster(self, cluster: Cluster) -> tuple[Rule, ...]:
+    def by_cluster(self, cluster: str) -> tuple[Rule, ...]:
         return tuple(rule for rule in self.rules if rule.cluster == cluster)
 
     @property
@@ -141,8 +142,15 @@ def load(version: str, root: Path = DEFAULT_ROOT) -> Ruleset:
             f"but it is stored under {version!r}"
         )
 
+    clusters = tuple(data["clusters"])
     rules = []
     for entry in data["rules"]:
+        if entry["cluster"] not in clusters:
+            # The rule set declares its clusters; a rule outside them is a typo that
+            # would otherwise invent a cluster no report knows to include.
+            raise RulesetError(
+                f"{entry['id']}: cluster {entry['cluster']!r} is not declared by the rule set"
+            )
         recorded = entry["text_digest"]
         actual = text_digest(entry["text"])
         if recorded != actual:
@@ -159,7 +167,7 @@ def load(version: str, root: Path = DEFAULT_ROOT) -> Ruleset:
                 text=entry["text"],
                 access=entry["access"],
                 scope=entry["scope"],
-                cluster=Cluster(entry["cluster"]),
+                cluster=entry["cluster"],
                 paths=tuple(entry["paths"]),
                 dynamic=entry["dynamic"],
                 max_age_days=entry.get("max_age_days"),
@@ -171,7 +179,7 @@ def load(version: str, root: Path = DEFAULT_ROOT) -> Ruleset:
     if len(identifiers) != len(set(identifiers)):
         raise RulesetError(f"{version}: duplicate rule identifiers")
 
-    return Ruleset(version=version, sha256=sha256, rules=tuple(rules))
+    return Ruleset(version=version, sha256=sha256, clusters=clusters, rules=tuple(rules))
 
 
 def latest(root: Path = DEFAULT_ROOT) -> Ruleset:

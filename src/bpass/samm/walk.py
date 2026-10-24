@@ -160,7 +160,7 @@ class Walker:
         if (node, SAMM.properties, None) not in self.graph:
             raise ModelResolutionError(
                 f"{urn} is not an aspect in the loaded graph. Check that its model is "
-                f"pinned in samm-models/sources.json."
+                f"pinned in the profile's samm-models/sources.json."
             )
         parts = split_urn(urn)
         if parts is None:
@@ -215,7 +215,7 @@ class Walker:
         if characteristic is None:
             raise ModelResolutionError(
                 f"{node} has no samm:characteristic. Its model is probably not pinned; "
-                f"add it to samm-models/sources.json."
+                f"add it to the profile's samm-models/sources.json."
             )
         example = self.graph.value(node, SAMM.exampleValue)
         return Property(
@@ -325,7 +325,7 @@ class Walker:
             )
         raise ModelResolutionError(
             f"{node} has no rdf:type. Its model is probably not pinned; add it to "
-            f"samm-models/sources.json."
+            f"the profile's samm-models/sources.json."
         )
 
     # -- entities -------------------------------------------------------------

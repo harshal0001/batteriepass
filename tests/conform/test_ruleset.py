@@ -33,11 +33,22 @@ from bpass.conform import (
     unresolvable,
 )
 from bpass.conform.ruleset import DEFAULT_ROOT
-from bpass.core import ANNEX_XIII_CLUSTERS
 
 # Counted from the pinned annex text, not from the loader that is under test.
 EXPECTED_POINTS = {1: 19, 2: 4, 3: 1, 4: 4}
 EXPECTED_TOTAL = sum(EXPECTED_POINTS.values())
+
+# The battery profile's editorial reading of Annex XIII. The core no longer knows these;
+# the rule set declares them, and this pins what it declares.
+ANNEX_XIII_CLUSTERS = (
+    "carbon_footprint",
+    "circularity",
+    "compliance",
+    "due_diligence",
+    "general",
+    "materials",
+    "performance_durability",
+)
 
 
 @pytest.fixture(scope="module")
@@ -67,9 +78,12 @@ class TestCompleteness:
         points = sorted(rule.point for rule in ruleset.rules if rule.part == 1)
         assert points == [chr(c) for c in range(ord("a"), ord("s") + 1)]
 
+    def test_the_seven_annex_xiii_clusters_are_declared(self, ruleset: Ruleset) -> None:
+        assert ruleset.clusters == ANNEX_XIII_CLUSTERS
+
     def test_every_cluster_has_at_least_one_rule(self, ruleset: Ruleset) -> None:
         # A cluster with no rules would report as vacuously complete on every passport.
-        for cluster in ANNEX_XIII_CLUSTERS:
+        for cluster in ruleset.clusters:
             assert ruleset.by_cluster(cluster), f"{cluster} has no rules"
 
     def test_an_unmapped_point_is_reported_not_dropped(self, ruleset: Ruleset) -> None:
@@ -158,6 +172,17 @@ class TestTamperDetection:
         _rehash(ruleset_tree / "2025-07-31")
 
         with pytest.raises(RulesetError, match="does not match its recorded digest"):
+            load("2025-07-31", ruleset_tree)
+
+    def test_a_rule_in_an_undeclared_cluster_is_refused(self, ruleset_tree: Path) -> None:
+        # A misspelt cluster would otherwise invent one that no report knows to include.
+        path = ruleset_tree / "2025-07-31" / "ruleset.json"
+        data = json.loads(path.read_text(encoding="utf-8"))
+        data["rules"][0]["cluster"] = "materails"
+        path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        _rehash(ruleset_tree / "2025-07-31")
+
+        with pytest.raises(RulesetError, match="not declared by the rule set"):
             load("2025-07-31", ruleset_tree)
 
     def test_a_modified_ruleset_file_is_refused(self, ruleset_tree: Path) -> None:

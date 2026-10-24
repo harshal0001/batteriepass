@@ -35,7 +35,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-RULESETS = REPO / "rulesets" / "annex-xiii"
+RULESETS = REPO / "profiles" / "battery" / "rulesets" / "annex-xiii"
 
 CELEX = "02023R1542-20250731"
 SOURCE_URL = f"https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX:{CELEX}"
@@ -123,7 +123,10 @@ def main(argv: list[str] | None = None) -> int:
             sorted(p for p in RULESETS.iterdir() if p.is_dir()) if RULESETS.is_dir() else []
         )
         if not directories:
-            print("error: no rule sets found under rulesets/annex-xiii", file=sys.stderr)
+            print(
+                "error: no rule sets found under profiles/battery/rulesets/annex-xiii",
+                file=sys.stderr,
+            )
             return 1
         problems = [problem for directory in directories for problem in verify(directory)]
         if problems:
