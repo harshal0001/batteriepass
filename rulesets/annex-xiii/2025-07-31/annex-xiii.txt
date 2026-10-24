@@ -1,0 +1,84 @@
+ANNEX XIII
+INFORMATION TO BE INCLUDED IN THE BATTERY PASSPORT
+1.
+PUBLICLY ACCESSIBLE INFORMATION RELATING TO THE BATTERY MODEL
+A battery passport shall include the following information relating to the battery model, which shall be accessible to the public:
+(a)
+the information specified in Part A of Annex VI;
+(b)
+the material composition of the battery, including its chemistry, hazardous substances present in the battery, other than mercury, cadmium or lead, and critical raw materials present in the battery;
+(c)
+the carbon footprint information referred to in Article 7(1) and (2);
+(d)
+information on responsible sourcing as indicated in the report on battery due diligence policy referred to in Article 52(3);
+(e)
+recycled content information as contained in the documentation referred to in Article 8(1);
+(f)
+the share of renewable content;
+(g)
+rated capacity (in Ah);
+(h)
+minimal, nominal and maximum voltage, with temperature ranges when relevant;
+(i)
+original power capability (in Watts) and limits, with temperature range when relevant;
+(j)
+expected battery lifetime expressed in cycles, and reference test used;
+(k)
+capacity threshold for exhaustion (only for electric vehicle batteries);
+(l)
+temperature range the battery can withstand when not in use (reference test);
+(m)
+period for which the commercial warranty for the calendar life applies;
+(n)
+initial round trip energy efficiency and at 50 % of cycle-life;
+(o)
+internal battery cell and pack resistance;
+(p)
+c-rate of relevant cycle-life test.
+▼C4
+(q)
+the marking requirements laid down in Article 13(4) and (5);
+▼B
+(r)
+the EU declaration of conformity referred to in Article 18;
+(s)
+the information regarding the prevention and management of waste batteries laid down in Article 74(1), points (a) to (f).
+2.
+INFORMATION RELATING TO THE BATTERY MODEL ACCESSIBLE ONLY TO PERSONS WITH A LEGITIMATE INTEREST AND THE COMMISSION
+A battery passport shall include the following information relating to the battery model, which shall be accessible only to persons with a legitimate interest and the Commission:
+(a)
+detailed composition, including materials used in the cathode, anode and electrolyte;
+(b)
+part numbers for components and contact details of sources for replacement spares;
+(c)
+dismantling information, including at least:
+—
+exploded diagrams of the battery system/pack showing the location of battery cells,
+—
+disassembly sequences,
+—
+type and number of fastening techniques to be unlocked,
+—
+tools required for disassembly,
+—
+warnings if risk of damaging parts exist,
+—
+amount of cells used and layout;
+(d)
+safety measures.
+3.
+INFORMATION ACCESSIBLE ONLY TO NOTIFIED BODIES, MARKET SURVEILLANCE AUTHORITIES AND THE COMMISSION
+A battery passport shall include the following information relating to the battery model, which shall be accessible only to notified bodies, market surveillance authorities and the Commission:
+—
+results of test reports proving compliance with the requirements laid down in this Regulation or any delegated or implementing act adopted pursuant to this Regulation.
+4.
+INFORMATION AND DATA RELATING TO AN INDIVIDUAL BATTERY ACCESSIBLE ONLY TO PERSONS WITH A LEGITIMATE INTEREST
+A battery passport shall include the following specific information and data relating to an individual battery, which shall be accessible only to persons with a legitimate interest:
+(a)
+the values for performance and durability parameters referred to in Article 10(1), when the battery is placed on the market and when it is subject to changes in its status;
+(b)
+information on the state of health of the battery pursuant to Article 14;
+(c)
+information on the status of the battery, defined as ‘original’, ‘repurposed’, ‘re-used’, ‘remanufactured’ or ‘waste’;
+(d)
+information and data resulting from its use, including the number of charging and discharging cycles and negative events, such as accidents, as well as periodically recorded information on the operating environmental conditions, including temperature, and on the state of charge.

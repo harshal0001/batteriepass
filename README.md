@@ -58,7 +58,8 @@ difference between this and a notebook.
 |---|---|
 | Aspect-model entities bound | 65 |
 | Properties whose payload name differs from their model name | 105 |
-| Annex XIII attributes checked, all seven clusters | |
+| Annex XIII mandatory points encoded, all seven clusters | 28 |
+| Of those, dynamic fields requiring refresh | 4 |
 | ONNX vs PyTorch, max abs difference | |
 | Passport assembly incl. inference, p50 / p95 | |
 | Cold start to first response | |
@@ -107,7 +108,7 @@ CPU-only torch install is roughly 700 MB against onnxruntime's 50 MB.
 | `src/bpass/api/` | FastAPI routes. Transport only |
 | `training/` | The only place `torch` is imported |
 | `samm-models/` | Pinned Catena-X aspect models, hashed. Nine of them |
-| `rulesets/annex-xiii/` | Versioned rule data, hashed |
+| `rulesets/annex-xiii/` | Verbatim regulation text and rule data, hashed |
 | `manifests/` | Committed cell-disjoint split manifests |
 | `docs/adr/` | Why things are the way they are |
 
@@ -127,6 +128,13 @@ uv run python scripts/fetch_samm.py            # fetch and pin
 uv run python scripts/fetch_samm.py --check    # verify offline; CI runs this
 uv run python -m bpass.samm.generate           # regenerate the bindings
 uv run python -m bpass.samm.generate --check   # fail if committed output is stale
+```
+
+Annex XIII is pinned the same way, from the consolidated regulation text on EUR-Lex:
+
+```bash
+uv run python scripts/fetch_annex_xiii.py --check        # verify offline
+uv run python scripts/build_annex_xiii_ruleset.py        # rebuild rules from the text
 ```
 
 Training has its own environment, because it is the one place torch is allowed. It is a

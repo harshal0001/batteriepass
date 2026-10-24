@@ -15,7 +15,8 @@ edited to look consistent in hindsight is not a log.
 | [0002](0002-generate-pydantic-bindings-from-samm.md) | Generate Pydantic bindings from SAMM in Python | Accepted, amended by 0008 |
 | [0003](0003-train-in-pytorch-serve-onnx.md) | Train in PyTorch, serve ONNX | Accepted |
 | [0004](0004-dynamodb-behind-a-repository-port.md) | DynamoDB, behind a repository port | Accepted |
-| [0005](0005-annex-xiii-as-versioned-rule-data.md) | Annex XIII as versioned rule data | Accepted |
+| [0005](0005-annex-xiii-as-versioned-rule-data.md) | Annex XIII as versioned rule data | Accepted, refined by 0009 |
 | [0006](0006-ship-a-calibrated-interval.md) | Ship a calibrated interval with every estimate | Accepted |
 | [0007](0007-two-deployment-targets.md) | Two deployment targets: Lambda and Helm | Accepted |
 | [0008](0008-check-parity-against-generated-artefacts.md) | Check parity against the published artefacts | Accepted |
+| [0009](0009-ground-the-ruleset-in-the-regulation-text.md) | Ground the rule set in the regulation text | Accepted |
