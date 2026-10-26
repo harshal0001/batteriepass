@@ -1,0 +1,47 @@
+name: docs-check
+
+# Separate from ci.yml on purpose: this guards the documentation contract in CLAUDE.md,
+# not the code. A change under src/, training/, profiles/ or scripts/ must come with a
+# change under docs/, unless the PR carries the `no-docs-needed` label. Every Mermaid
+# diagram in README.md and docs/ must parse, so a broken diagram cannot land.
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  docs:
+    name: docs move with code
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Source changed ⇒ docs changed
+        env:
+          SKIP_DOCS_CHECK: ${{ contains(github.event.pull_request.labels.*.name, 'no-docs-needed') && '1' || '0' }}
+        run: python scripts/check_docs.py origin/${{ github.base_ref }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # Mermaid's own parser in Node, no browser. Pinned so a Mermaid release cannot
+      # change what "valid" means without a deliberate bump here.
+      - name: Mermaid diagrams parse
+        if: always()
+        run: |
+          npm install --silent --no-save --prefix /tmp/mmcheck mermaid@11.17.2 jsdom@30.1.3 dompurify@3.4.17
+          cp scripts/check_mermaid.mjs /tmp/mmcheck/
+          node /tmp/mmcheck/check_mermaid.mjs README.md $(find docs -name '*.md')
