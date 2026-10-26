@@ -185,6 +185,17 @@ class TestTamperDetection:
         with pytest.raises(RulesetError, match="not declared by the rule set"):
             load("2025-07-31", ruleset_tree)
 
+    def test_a_dynamic_rule_without_a_refresh_interval_is_refused(self, ruleset_tree: Path) -> None:
+        path = ruleset_tree / "2025-07-31" / "ruleset.json"
+        data = json.loads(path.read_text(encoding="utf-8"))
+        dynamic = next(rule for rule in data["rules"] if rule["dynamic"])
+        del dynamic["max_age_days"]
+        path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        _rehash(ruleset_tree / "2025-07-31")
+
+        with pytest.raises(RulesetError, match="unrefreshed"):
+            load("2025-07-31", ruleset_tree)
+
     def test_a_modified_ruleset_file_is_refused(self, ruleset_tree: Path) -> None:
         path = ruleset_tree / "2025-07-31" / "ruleset.json"
         path.write_text(path.read_text(encoding="utf-8") + "\n", encoding="utf-8")

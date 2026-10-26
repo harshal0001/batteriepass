@@ -151,6 +151,10 @@ def load(version: str, root: Path = DEFAULT_ROOT) -> Ruleset:
             raise RulesetError(
                 f"{entry['id']}: cluster {entry['cluster']!r} is not declared by the rule set"
             )
+        if entry["dynamic"] and not entry.get("max_age_days"):
+            raise RulesetError(
+                f"{entry['id']}: dynamic, but says nothing about how long it may go unrefreshed"
+            )
         recorded = entry["text_digest"]
         actual = text_digest(entry["text"])
         if recorded != actual:

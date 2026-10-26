@@ -13,4 +13,4 @@ come out of a design doc become ADRs in `docs/adr/`.
 
 | Feature | Status | Doc |
 |---|---|---|
-| _none yet — candidates: passport creation flow, DynamoDB single-table layout, health service, document extraction, regulation Q&A_ | | |
+| conformance checker | implemented | `conformance-checker.md` |

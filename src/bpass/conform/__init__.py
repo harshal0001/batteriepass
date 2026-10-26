@@ -1,5 +1,6 @@
 """Annex XIII rule-set loading and per-cluster conformance checks."""
 
+from bpass.conform.check import check
 from bpass.conform.paths import PathError, exists, resolve, unresolvable
 from bpass.conform.ruleset import (
     Rule,
@@ -17,6 +18,7 @@ __all__ = [
     "Ruleset",
     "RulesetError",
     "available_versions",
+    "check",
     "exists",
     "latest",
     "load",
