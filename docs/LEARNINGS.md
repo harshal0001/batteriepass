@@ -25,6 +25,38 @@
 
 ---
 
+## 2026-10-26 — Conformance checker
+
+**Built:** `conform/check.py`: `check(passport, ruleset, now) → ConformanceReport`. The
+rule-set loader now refuses a dynamic rule without a refresh interval, and
+`DynamicFieldState.last_refreshed_at` may be `None` (unknown → stale). Design doc first:
+`docs/design/conformance-checker.md`.
+
+**Patterns / concepts used:** conformance check (presence), dynamic field (freshness),
+pure function with the clock passed in (glossary).
+
+**Decisions made:** the five presence rules in the design doc §4.4: all paths of a rule,
+at least one list item, empty is absent, freshness from the passport's own timestamps,
+missing items named by rule id + paths. No ADR: they are editorial, like the cluster
+mapping, and live beside the code that applies them.
+
+**Diagrams added/updated:** `docs/design/conformance-checker.md` (components, rule flow),
+`docs/ARCHITECTURE.md` (module map node).
+
+**What I (owner) understood well:** …
+
+**What the agent decided that I did not review:** naive timestamps read as UTC (marked
+`shortcut:` in `check.py`); the official example scores 27/28 with all four dynamic fields
+stale, which is correct but means no demo passport is conformant yet.
+
+**Open questions / things I don't understand yet:**
+- The binding enforces 35 of 37 rule paths on its own. Is the checker then mostly
+  redundant for batteries, and what changes when the aspect model relaxes a field?
+- 4(c) (battery status) has no timestamp in BatteryPass, so it is always stale. Should a
+  rule set be able to name a fallback timestamp, e.g. `metadata.lastModification`?
+
+---
+
 ## 2026-10-26 — Retrofitted the learning/architecture template
 
 **Built:** `CLAUDE.md` contract adapted to this project; `docs/ARCHITECTURE.md`

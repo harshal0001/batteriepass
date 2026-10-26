@@ -62,6 +62,13 @@ class TestClusterCoverage:
         assert ClusterCoverage(cluster="due_diligence", required=0, present=0).complete
 
 
+class TestDynamicFieldState:
+    def test_no_timestamp_counts_as_stale(self) -> None:
+        # Nothing proves the value was ever refreshed.
+        field = DynamicFieldState(attribute="XIII.4.c", last_refreshed_at=None, max_age_days=365)
+        assert field.stale_at(NOW)
+
+
 class TestConformanceReport:
     def test_omitting_a_cluster_is_rejected(self) -> None:
         partial = full_coverage()[:-1]

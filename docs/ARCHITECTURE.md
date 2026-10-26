@@ -16,10 +16,10 @@ flowchart TB
     end
     subgraph APP["Application"]
         PASS["passport/<br/>assembly · provenance · record store port"]
-        CONF["conform/<br/>rule-set loading · per-cluster checks"]
+        CONF["conform/<br/>rule-set loading · path resolution<br/>presence + freshness check"]
     end
     subgraph DOM["Domain contract"]
-        CORE["core/<br/>Pydantic models · typed errors<br/>strict mypy · no I/O"]
+        CORE["core/<br/>Pydantic models · invariants<br/>strict mypy · no I/O"]
         BIND["bindings/<br/>generated aspect-model types<br/>never hand-edited"]
     end
     subgraph GEN["Code generation (not in the image's hot path)"]
@@ -44,6 +44,10 @@ flowchart TB
 ```
 
 Dependencies point **inward**: `api` → `passport` / `conform` → `core` + `bindings`.
+_Today most of those arrows are intended, not real._ The one that exists is
+`conform/` → `core/`: the checker returns a `ConformanceReport`. `conform/` takes any
+Pydantic model and is pointed at `BatteryPass` only by its tests; `core/` and `bindings/`
+import only Pydantic. The rest become real when `passport/` lands.
 Infrastructure is reached only through interfaces defined in the application layer
 (ADR-0007 names the repository port). `profiles/` and `training/` are outside the package:
 the first is data the core reads, the second produces artefacts the core loads.
@@ -52,10 +56,10 @@ the first is data the core reads, the second produces artefacts the core loads.
 
 | Module | Owns | Depends on | Status | Decided in |
 |---|---|---|---|---|
-| `core/` | Domain models (`models.py`), typed errors, the contract everything else uses | Pydantic only | built | ADR-0003 |
+| `core/` | Domain models (`models.py`) with their invariants as validators; the contract everything else uses. No typed exceptions yet | Pydantic only | built | ADR-0003 |
 | `samm/` | `loader.py` reads Turtle, `walk.py` traverses the aspect model, `model.py` is the intermediate form, `emit.py` writes Python, `generate.py` is the CLI with `--check` | rdflib (codegen extra) | built, property-tested | ADR-0001 |
-| `bindings/` | Generated Pydantic bindings for the pinned Catena-X models | core | generated | ADR-0001 |
-| `conform/` | `ruleset.py` loads/verifies versioned rule sets, `paths.py` resolves passport paths against the schema | core, bindings | built | ADR-0002 |
+| `bindings/` | Generated Pydantic bindings for the pinned Catena-X models | Pydantic only | generated | ADR-0001 |
+| `conform/` | `ruleset.py` loads/verifies versioned rule sets (`RulesetError`), `paths.py` resolves passport paths against any Pydantic model (`PathError`), `check.py` turns a passport + rule set into a `ConformanceReport` (presence per cluster, dynamic-field freshness) | core, Pydantic (bindings in tests) | built | ADR-0002, `docs/design/conformance-checker.md` |
 | `passport/` | Assembly, provenance (`model_sha256`, `ruleset_sha256`, citations), record store port | core, conform, bindings | scaffold | ADR-0007 |
 | `api/` | FastAPI routes, error → HTTP mapping | passport, conform | scaffold | ADR-0007 |
 | _health service_ | ONNX ensemble, conformal interval, drift flag | core | not started | ADR-0004, ADR-0005 |
@@ -81,26 +85,48 @@ _Update the Status column as modules land. Each "not started" row should gain a
 
 ```mermaid
 erDiagram
+    PASSPORT_RECORD ||--|{ HEALTH_ESTIMATE : "health (one per target)"
+    PASSPORT_RECORD ||--|| CONFORMANCE_REPORT : conformance
+    PASSPORT_RECORD ||--o{ FIELD_PROVENANCE : provenance
+    CONFORMANCE_REPORT ||--|{ CLUSTER_COVERAGE : "coverage (every declared cluster)"
+    CONFORMANCE_REPORT ||--o{ DYNAMIC_FIELD_STATE : dynamic_fields
+    HEALTH_ESTIMATE ||--o| PREDICTION_INTERVAL : interval
     PASSPORT_RECORD {
-        string id PK
+        string id PK "DynamoDB partition key"
         string profile "battery | engine"
-        string ruleset_version
-        string ruleset_sha256
-        string model_sha256
-        json   passport "generated-binding shape"
-        json   conformance "per-cluster results"
-        json   health "value · interval · drift flag"
-        json   provenance "field → page · quote"
+        json passport "generated binding, e.g. BatteryPass"
+        bool is_demo "store refuses to overwrite"
         datetime created_at
     }
-    PASSPORT_RECORD }o--|| PROFILE : "checked against"
-    PROFILE {
-        string name PK
-        string samm_model_hashes
-        string ruleset_path
-        string onnx_model_sha256
+    HEALTH_ESTIMATE {
+        string target "soh_percent | rul_cycles"
+        float value
+        string model_sha256
+        bool in_distribution "drift flag"
+        bool certified "always false"
+    }
+    CONFORMANCE_REPORT {
+        string ruleset_version
+        string ruleset_sha256
+        datetime checked_at
+    }
+    CLUSTER_COVERAGE {
+        string cluster
+        int required
+        int present
+        list missing
+    }
+    FIELD_PROVENANCE {
+        string field
+        string source_sha256
+        int page
+        string quote
+        bool verified
     }
 ```
+
+All of these are frozen Pydantic models in `src/bpass/core/models.py`; the invariants
+(counts agree, every cluster reported, one estimate per target) are validators there.
 
 _The single-table DynamoDB layout and access patterns are a design-doc item before the
 store is implemented (see §7)._
@@ -111,7 +137,7 @@ store is implemented (see §7)._
 |---|---|---|---|
 | Configuration | pydantic-settings from environment | _to be: `core/settings.py` or `api/settings.py`_ | planned |
 | Logging | structlog JSON with request id on every entry | `api/` middleware | planned |
-| Errors | typed exceptions in `core/`, mapped to HTTP codes in `api/` | `core/`, `api/` | partial |
+| Errors | typed exceptions, mapped to HTTP codes in `api/`. Today they live where raised: `RulesetError`/`PathError` in `conform/`, `SammError` in `samm/model.py`; `core/` has none | `conform/`, `samm/`, later `api/` | partial |
 | Provenance | hashes and citations stored with the record, never recomputed | `passport/` | planned (ADR-0005/6) |
 | Timeouts / retries | per-client defaults; retries only on idempotent ops | DynamoDB client, Extractor | planned |
 | Integrity of inputs | pinned upstream sources verified by hash in CI | `scripts/fetch_*.py --check` | built |
@@ -139,6 +165,11 @@ Stated scale: research/portfolio, bursty QR-scan traffic, zero budget.
 - **At 100×:** DynamoDB on-demand is fine; the LLM extraction step on the request path
   would not be. It should already be off the QR-scan path (extraction happens at passport
   creation, not at page view).
+- **Before the first deploy, not at scale:** `conform/ruleset.py` (`DEFAULT_ROOT`) and
+  `samm/loader.py` find `profiles/battery/` by walking up from the source file. The wheel
+  packages only `src/bpass`, so inside the image that path will not exist, and the
+  battery profile is hard-wired into an asset-agnostic module (ADR-0003). Profile
+  location needs to become configuration.
 - **Decisions deferred until needed:** caching of public pages at the edge; separate
   read model for the public page; multi-region.
 

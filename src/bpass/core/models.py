@@ -180,10 +180,15 @@ class DynamicFieldState(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     attribute: str = Field(min_length=1)
-    last_refreshed_at: datetime
+    last_refreshed_at: datetime | None = Field(
+        description="None when the passport carries no timestamp for this field."
+    )
     max_age_days: int = Field(gt=0, description="Refresh interval this attribute expects.")
 
     def stale_at(self, now: datetime) -> bool:
+        # Unknown counts as stale: nothing proves the value was ever refreshed.
+        if self.last_refreshed_at is None:
+            return True
         return (now - self.last_refreshed_at).days > self.max_age_days
 
 

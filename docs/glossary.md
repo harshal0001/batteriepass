@@ -25,6 +25,10 @@ payload (`io.catenax.battery.battery_pass`). Pinned by commit hash. → `profile
 before serving the first request. The size of the serving image is the main lever; the
 reason `torch` is excluded. → `pyproject.toml` comments, ADR-0004, ADR-0007
 
+**Conformance check (presence)** — Judging whether a passport *carries* each mandatory
+point of a rule set, cluster by cluster. Not whether the values are right: types are the
+bindings' job, correctness is out of scope. → `src/bpass/conform/check.py`, `docs/design/conformance-checker.md`
+
 **Conformal prediction (split)** — A distribution-free method that turns any point
 predictor into an interval with a guaranteed coverage (e.g. 90%) by calibrating on a
 held-out set. Ships with every health estimate. → ADR-0005
@@ -35,6 +39,10 @@ their predictions is a cheap, strong uncertainty estimate. Five seeds here. → 
 **Drift flag (PSI / KS)** — Per-feature comparison of a request's inputs against a stored
 training reference using the Population Stability Index or Kolmogorov–Smirnov test; if
 inputs look unlike training data the estimate is marked unreliable. → ADR-0005
+
+**Dynamic field (freshness)** — An Annex XIII attribute that must be updated through the
+battery's life (Part 4: capacity, power, status, usage). The checker reads its age from the
+passport's own timestamps; no timestamp means stale. → `DynamicFieldState` in `src/bpass/core/models.py`
 
 **Generated code, byte-stable** — Code emitted by a generator and committed; CI
 regenerates it and fails on any diff, so a hand edit cannot survive. → `src/bpass/bindings/`, `bpass.samm.generate --check`
