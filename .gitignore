@@ -32,3 +32,13 @@ frontend/dist/
 # Planning briefs. Kept local: written in portfolio-and-hiring terms that
 # read oddly in a public repository. The decisions it drove live in docs/adr/.
 project-2-batteriepass*.md
+
+# Agent tooling. The contract (CLAUDE.md, .claude/commands/, docs/) is committed;
+# anything personal or generated stays out.
+.claude/settings.local.json
+.claude/*.local.*
+skill-observations/
+skill-updates/
+
+# Hypothesis example database: a test cache, regenerated on every run.
+.hypothesis/

@@ -1,0 +1,53 @@
+name: docs-check
+
+# Separate from ci.yml on purpose: this guards the documentation contract in CLAUDE.md,
+# not the code. A change under src/, training/, profiles/ or scripts/ must come with a
+# change under docs/, unless the PR carries the `no-docs-needed` label. Changed Mermaid
+# diagrams must also parse, so a broken diagram cannot land in a design doc.
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  docs:
+    name: docs move with code
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Source changed ⇒ docs changed
+        env:
+          SKIP_DOCS_CHECK: ${{ contains(github.event.pull_request.labels.*.name, 'no-docs-needed') && '1' || '0' }}
+        run: python scripts/check_docs.py origin/${{ github.base_ref }}
+
+      - name: Changed Mermaid diagrams parse
+        if: always()
+        run: |
+          set -e
+          files=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -E '^(docs/.*|README)\.md$' || true)
+          [ -z "$files" ] && { echo "no markdown changed"; exit 0; }
+          npm install -g --silent @mermaid-js/mermaid-cli
+          fail=0
+          for f in $files; do
+            [ -f "$f" ] || continue
+            awk '/^```mermaid/{flag=1; n++; next} /^```/{flag=0} flag{print > ("/tmp/diag_" n ".mmd")}' "$f"
+            for d in /tmp/diag_*.mmd; do
+              [ -e "$d" ] || continue
+              mmdc -i "$d" -o /tmp/out.svg >/dev/null 2>&1 || { echo "Mermaid syntax error in $f ($d)"; fail=1; }
+              rm -f "$d"
+            done
+          done
+          exit $fail
